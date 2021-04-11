@@ -15,34 +15,70 @@
  */
 #include <cstdio>
 #include <cmath>
+#include "omp.h"
 
 /* Calculate function for a given x */
 double integralFunction(double x);
 
-/* Calculate PI for a given number of steps */
-double calculatePI(double down, double up, long numSteps);
+/* Calculate PI for a given number of steps.
+ *
+ *
+ * */
+double calculatePI(double down, double up, long numSteps, int numberOfThreads = 1);
+
+double parallelBlock(long newNumSteps, double threadDown, double threadUp);
 
 int main() {
-	double pi = calculatePI(0.0, 1.0, 5'000'000'000L);
-
-	printf("pi = %.20f\n", pi);
-	printf("PI = %.20f\n", M_PI);
+	int i = 1;
+	while (true) {
+		double pi = calculatePI(0.0, 1.0, 500000000L, i++);
+		
+		printf("pi = %.20f\t", pi);
+		printf("PI = %.20f\n", M_PI);
+		
+		if (i == 17)
+			break;
+	}
 }
 
 double integralFunction(double x) {
 	return 4.0 / (1.0 + x * x);
 }
 
-double calculatePI(double down, double up, long numSteps) {
-	double dx = (up - down) / (double) numSteps;
-
+double calculatePI(double down, double up, long numSteps, int numberOfThreads) {
+	
+	double* sums = new double[numberOfThreads];
+	double start = omp_get_wtime();
+#pragma omp parallel num_threads(numberOfThreads)
+	{
+		double threadDown = (double) omp_get_thread_num() / (double) numberOfThreads;
+		double threadUp = (double) (omp_get_thread_num() + 1) / (double) numberOfThreads;
+		sums[omp_get_thread_num()] = parallelBlock(numSteps / numberOfThreads, threadDown, threadUp);
+	}
+	double end = omp_get_wtime();
+	printf("in %.8f seconds\t", end - start);
+	
 	double sum = 0.0;
+	for (int i = 0; i < numberOfThreads; i++) {
+		sum += sums[i];
+	}
+	
+	delete[] sums;
+	
+	return sum;
+}
 
-	for (long i = 0; i < numSteps; i++) {
+double parallelBlock(long newNumSteps, double threadDown, double threadUp) {
+	int currentThreadNum = omp_get_thread_num();
+	double sum = 0.0;
+	
+	double dx = (threadUp - threadDown) / (double) newNumSteps;
+	
+	for (long i = 0; i < newNumSteps; i++) {
 		double x = (i + 0.5) * dx;
+		x += threadDown;
 		double funRes = integralFunction(x);
 		sum += funRes * dx;
 	}
-
 	return sum;
 }
