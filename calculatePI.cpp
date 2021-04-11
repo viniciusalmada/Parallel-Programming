@@ -10,8 +10,7 @@
  *
  * As larger N the PI will be better approximated.
  *
- * First approach with 5 bilions in single thread
- * 	coasting ~20 seconds
+ * Approach with 1 bilion.
  */
 #include <cstdio>
 #include <cmath>
@@ -28,14 +27,16 @@ double calculatePI(double down, double up, long numSteps, int numberOfThreads = 
 double parallelBlock(long newNumSteps, double threadDown, double threadUp);
 
 int main() {
+
+	printf("Running on a system with %d threads\n\n", omp_get_max_threads());
+
 	int i = 1;
 	while (true) {
-		double pi = calculatePI(0.0, 1.0, 5000000000L, i++);
+		double pi = calculatePI(0.0, 1.0, 1'000'000'000L, i++);
 		
-		printf("pi = %.20f\t", pi);
-		printf("PI = %.20f\n", M_PI);
+		printf("pi = %.20f\n", pi);
 		
-		if (i == omp_get_num_threads() + 1)
+		if (i == omp_get_max_threads() + 1)
 			break;
 	}
 }
@@ -46,24 +47,19 @@ double integralFunction(double x) {
 
 double calculatePI(double down, double up, long numSteps, int numberOfThreads) {
 	
-	double* sums = new double[numberOfThreads];
+	double sum = 0.0;
 	double start = omp_get_wtime();
 #pragma omp parallel num_threads(numberOfThreads)
 	{
 		double threadDown = (double) omp_get_thread_num() / (double) numberOfThreads;
 		double threadUp = (double) (omp_get_thread_num() + 1) / (double) numberOfThreads;
-		sums[omp_get_thread_num()] = parallelBlock(numSteps / numberOfThreads, threadDown, threadUp);
+		double temp = parallelBlock(numSteps / numberOfThreads, threadDown, threadUp);
+#pragma omp critical
+		sum += temp;
 	}
 	double end = omp_get_wtime();
-	printf("in %.8f seconds\t", end - start);
-	
-	double sum = 0.0;
-	for (int i = 0; i < numberOfThreads; i++) {
-		sum += sums[i];
-	}
-	
-	delete[] sums;
-	
+	printf("%2d threads in %.8f seconds\t", numberOfThreads, end - start);
+		
 	return sum;
 }
 
