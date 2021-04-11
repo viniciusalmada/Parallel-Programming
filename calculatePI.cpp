@@ -20,23 +20,22 @@
 /* Calculate function for a given x */
 double integralFunction(double x);
 
-/* Calculate PI for a given number of steps.
- *
- *
- * */
+/* Calculate PI for a given number of steps
+ * and with a given number of threads. */
 double calculatePI(double down, double up, long numSteps, int numberOfThreads = 1);
 
+/* The block of code that will be used for each thread separately */
 double parallelBlock(long newNumSteps, double threadDown, double threadUp);
 
 int main() {
 	int i = 1;
 	while (true) {
-		double pi = calculatePI(0.0, 1.0, 500000000L, i++);
+		double pi = calculatePI(0.0, 1.0, 5000000000L, i++);
 		
 		printf("pi = %.20f\t", pi);
 		printf("PI = %.20f\n", M_PI);
 		
-		if (i == 17)
+		if (i == omp_get_num_threads() + 1)
 			break;
 	}
 }
@@ -69,7 +68,6 @@ double calculatePI(double down, double up, long numSteps, int numberOfThreads) {
 }
 
 double parallelBlock(long newNumSteps, double threadDown, double threadUp) {
-	int currentThreadNum = omp_get_thread_num();
 	double sum = 0.0;
 	
 	double dx = (threadUp - threadDown) / (double) newNumSteps;
